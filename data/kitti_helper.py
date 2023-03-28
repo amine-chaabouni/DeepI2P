@@ -230,7 +230,7 @@ class FarthestSampler:
 
     def sample(self, pts, k):
         farthest_pts = np.zeros((self.dim, k))
-        farthest_pts_idx = np.zeros(k, dtype=np.int)
+        farthest_pts_idx = np.zeros(k, dtype=int)
         init_idx = np.random.randint(len(pts))
         farthest_pts[:, 0] = pts[:, init_idx]
         farthest_pts_idx[0] = init_idx

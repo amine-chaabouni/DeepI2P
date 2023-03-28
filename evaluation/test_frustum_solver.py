@@ -39,7 +39,7 @@ def generate_random_transform(P_tx_amplitude, P_ty_amplitude, P_tz_amplitude,
               random.uniform(-P_Rz_amplitude, P_Rz_amplitude)]
 
     rotation_mat = augmentation.angles2rotation_matrix(angles)
-    P_random = np.identity(4, dtype=np.float)
+    P_random = np.identity(4, dtype=float)
     P_random[0:3, 0:3] = rotation_mat
     P_random[0:3, 3] = t
 
@@ -67,7 +67,7 @@ def get_inside_img_mask(points_np, P_np, K_np, H, W):
 
 
 if __name__=='__main__':
-    root_path = '/ssd/jiaxin/point-img-feature/kitti/save/1.3-odometry'
+    root_path = '/data/oxford'
     visualization_output_folder = 'visualization'
     visualization_output_path = os.path.join(root_path, visualization_output_folder)
     data_output_folder = 'data'
@@ -84,11 +84,11 @@ if __name__=='__main__':
         if i<0:
             continue
 
-        point_data_np = np.loadtxt(os.path.join(data_output_path, filename+'_pc_label.txt'))
-        points_np = point_data_np[0:3, :].astype(np.float64)
+        point_data_np = np.load(os.path.join(data_output_path, filename+'_pc_label.npy'))
+        points_np = point_data_np[0:3, :].astype(float)
         labels_np = point_data_np[3, :]
-        K_np = np.loadtxt(os.path.join(data_output_path, filename + '_K.txt')).astype(np.float64)
-        P_gt_np = np.loadtxt(os.path.join(data_output_path, filename + '_P.txt')).astype(np.float64)
+        K_np = np.load(os.path.join(data_output_path, filename + '_K.npy')).astype(float)
+        P_gt_np = np.load(os.path.join(data_output_path, filename + '_P.npy')).astype(float)
 
         # trick to help optimization
         # mask = points_np[2, :]>0
@@ -108,11 +108,15 @@ if __name__=='__main__':
                                              K_np,
                                              # P_gt_np[0:3, 0:3],
                                              # P_gt_np[0:3, 3],
-                                             P_random_init[0:3, 0:3],
+                                             0.,
                                              P_random_init[0:3, 3],
-                                             160,
-                                             512,
-                                             True)
+                                             160.0,
+                                             512.0,
+                                             [-10.0, -1.0, -10.0],
+                                             [10., 1., 10.],
+                                             500,
+                                             False,
+                                             False)
         print(P)
         print(P_gt_np)
 
