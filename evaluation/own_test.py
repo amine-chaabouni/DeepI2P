@@ -299,11 +299,41 @@ if __name__ == "__main__":
         .to(dtype=torch.uint8).permute(0, 2, 3, 1).contiguous().cpu().numpy()  # Bx3xHxW -> BxHxWx3
     t_ij_np = t_ij.cpu().numpy()  # Bx3
 
-    K = K.cpu().nupy()
-
     # H = 384  # kitti=160, oxford=288/192/384, nuscenes 160
     # W = 640  # kitti=512, oxford=512/320/640, nuscenes 320
     fine_resolution_scale = 1 / 32.0
 
-    solve_PnP(pc_np, coarse_prediction_np, fine_prediction_np, K, H, W, fine_resolution_scale,
-              iterationsCount=500, method=cv2.SOLVEPNP_EPNP)
+    b = 0
+    K = K.cpu().numpy()[b, ...]
+    P = P.cpu().numpy()[b, ...]
+
+    pc_vis_np = pc_np[b, :, :]  # 3xN
+    P_pc_vis_np = P_pc_np[b, :, :]  # 3xN
+    img_vis_np = imgs_np[b, :, :, :]  # HxWx3
+    coarse_prediction_vis_np = coarse_prediction_np[b, :]  # N
+    fine_prediction_vis_np = fine_prediction_np[b, :]  # N
+    KP_pc_pxpy_vis_np = KP_pc_pxpy_np[b, :, :]  # 2xN
+
+    coarse_label_vis_np = coarse_label_np[b, :]  # N
+
+    point_data_np = np.concatenate(
+        (
+            pc_vis_np,
+            np.expand_dims(coarse_prediction_vis_np, axis=0),
+            np.expand_dims(coarse_label_vis_np, axis=0),
+            np.expand_dims(fine_prediction_vis_np, axis=0),
+            # np.expand_dims(fine_labels_vis_np, axis=0),
+        ),
+        axis=0)
+
+    pc_np = point_data_np[0:3, :].astype(np.float64)
+    coarse_predictions_np = point_data_np[3, :].astype(np.int)
+    coarse_labels_np = point_data_np[4, :].astype(np.int)
+    fine_predictions_np = point_data_np[5, :].astype(np.int)
+    # fine_labels_np = point_data_np[6, :].astype(np.int)
+
+    P_pred_np, final_cost = solve_PnP(pc_np, coarse_prediction_np, fine_prediction_np, K, H, W, fine_resolution_scale,
+                                      iterationsCount=500, method=cv2.SOLVEPNP_EPNP)
+
+    print("P_pred_np")
+    print(P_pred_np)
