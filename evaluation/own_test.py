@@ -14,6 +14,8 @@ from models.multimodal_classifier import MMClassifer, MMClassiferCoarse
 
 from data.kitti_helper import camera_matrix_scaling, camera_matrix_cropping, FarthestSampler
 
+from evaluation.registration_pnp import solve_PnP
+
 
 def downsample_with_reflectance(pointcloud, reflectance, voxel_grid_downsample_size):
     pcd = open3d.geometry.PointCloud()
@@ -109,13 +111,13 @@ if __name__ == "__main__":
     camera_poses_np_dict = {}
 
     pc_timestamps_np = np.load(os.path.join(root_path, traversal, 'pc_timestamps.npy'))
-    print("pc_timestamps")
-    print(pc_timestamps_np.shape)
-    print(pc_timestamps_np[:10])
+    # print("pc_timestamps")
+    # print(pc_timestamps_np.shape)
+    # print(pc_timestamps_np[:10])
     pc_timestamps_list_dict[traversal] = pc_timestamps_np.tolist()
     pc_poses_np = np.load(os.path.join(root_path, traversal, 'pc_poses.npy')).astype(np.float32)
-    print("pc_poses")
-    print(pc_poses_np[:10])
+    # print("pc_poses")
+    # print(pc_poses_np[:10])
     # convert it to camera coordinate
     P_convert = np.asarray([[0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 0, 1]], dtype=np.float32)
     P_convert_inv = np.linalg.inv(P_convert)
@@ -125,13 +127,13 @@ if __name__ == "__main__":
     pc_poses_np_dict[traversal] = pc_poses_np
 
     img_timestamps_np = np.load(os.path.join(root_path, traversal, 'camera_timestamps.npy'))
-    print("img_timestamps")
-    print(img_timestamps_np.shape)
-    print(img_timestamps_np[:10])
+    # print("img_timestamps")
+    # print(img_timestamps_np.shape)
+    # print(img_timestamps_np[:10])
     camera_timestamps_list_dict[traversal] = img_timestamps_np.tolist()
     img_poses_np = np.load(os.path.join(root_path, traversal, 'camera_poses.npy')).astype(np.float32)
-    print("img_poses")
-    print(img_poses_np[:10])
+    # print("img_poses")
+    # print(img_poses_np[:10])
     # convert it to camera coordinate
     for b in range(img_poses_np.shape[0]):
         img_poses_np[b] = np.dot(P_convert, np.dot(img_poses_np[b], P_convert_inv))
@@ -159,11 +161,8 @@ if __name__ == "__main__":
                                                           camera_poses_np)
 
     camera_folder = os.path.join(root_path, traversal, 'stereo', 'centre')
-    print(f"camera folder = {camera_folder}")
     camera_timestamp = camera_timestamps_list[camera_timestamp_idx]
-    print(f"camera image = {os.path.join(camera_folder, '%d.jpg' % camera_timestamp)}")
     img = np.array(Image.open(os.path.join(camera_folder, "%d.jpg" % camera_timestamp)))
-    print(img.shape)
     # ------------- load image, original size is 960x1280, bottom rows are car itself -------------
     tmp_img_H = img.shape[0]
     img = img[0:(tmp_img_H - opt.crop_original_bottom_rows), :, :]
@@ -250,7 +249,7 @@ if __name__ == "__main__":
     t_ij = torch.from_numpy(t_ij.astype(np.float32)).to(device)  # 3
 
     return_value = pc, intensity, sn, node_a, node_b, P, img, K, t_ij
-    
+
     # ------------ add batch size -----------------
     img = img.unsqueeze(0)
     pc = pc.unsqueeze(0)
@@ -258,7 +257,8 @@ if __name__ == "__main__":
     sn = sn.unsqueeze(0)
     node_a = node_a.unsqueeze(0)
     node_b = node_b.unsqueeze(0)
-    print(img.shape)
+    # print(img.shape)
+
     B, H, W = img.size(0), img.size(2), img.size(3)
     N = pc.size(2)
     H_fine = int(round(H / opt.img_fine_resolution_scale))
@@ -272,3 +272,38 @@ if __name__ == "__main__":
     print("coardse_prediction: ", coarse_prediction)
     print(coarse_prediction.shape)
     # print(fine_prediction.shape)
+
+    pc_homo = torch.cat((pc,
+                         torch.ones((B, 1, N), dtype=pc.dtype)),
+                        dim=1)  # Bx4xN
+    P_pc_homo = torch.matmul(P, pc_homo)  # Bx4x4 * Bx4xN -> Bx4xN
+    P_pc = P_pc_homo[:, 0:3, :]  # Bx3xN
+    KP_pc = torch.matmul(K, P_pc)
+    KP_pc_pxpy = KP_pc[:, 0:2, :] / KP_pc[:, 2:3, :]  # Bx3xN -> Bx2xN
+
+    # compute ground truth
+    x_inside_mask = (KP_pc_pxpy[:, 0:1, :] >= 0) \
+                    & (KP_pc_pxpy[:, 0:1, :] <= W - 1)  # Bx1xN_pc
+    y_inside_mask = (KP_pc_pxpy[:, 1:2, :] >= 0) \
+                    & (KP_pc_pxpy[:, 1:2, :] <= H - 1)  # Bx1xN_pc
+    z_inside_mask = P_pc_homo[:, 2:3, :] > 0.1  # Bx1xN_pc
+    inside_mask = x_inside_mask & y_inside_mask & z_inside_mask  # Bx1xN_pc
+    coarse_label_np = inside_mask.squeeze(1).to(dtype=torch.long).cpu().numpy()
+
+    coarse_prediction_np = coarse_prediction.cpu().numpy()
+    fine_prediction_np = fine_prediction.cpu().numpy()
+    pc_np = pc.cpu().numpy()  # Bx3xN
+    P_pc_np = P_pc.cpu().numpy()  # Bx3xN
+    KP_pc_pxpy_np = KP_pc_pxpy.cpu().numpy()  # Bx2xN
+    imgs_np = img.detach().round() \
+        .to(dtype=torch.uint8).permute(0, 2, 3, 1).contiguous().cpu().numpy()  # Bx3xHxW -> BxHxWx3
+    t_ij_np = t_ij.cpu().numpy()  # Bx3
+
+    K = K.cpu().nupy()
+
+    # H = 384  # kitti=160, oxford=288/192/384, nuscenes 160
+    # W = 640  # kitti=512, oxford=512/320/640, nuscenes 320
+    fine_resolution_scale = 1 / 32.0
+
+    solve_PnP(pc_np, coarse_prediction_np, fine_prediction_np, K, H, W, fine_resolution_scale,
+              iterationsCount=500, method=cv2.SOLVEPNP_EPNP)
