@@ -9,7 +9,7 @@ class Options:
         # self.dataroot = '/data/personal/jiaxin/datasets/kitti'
         self.checkpoints_dir = 'checkpoints'
         self.version = '0.1-fine'
-        self.is_debug = False
+        self.is_debug = True
         self.is_fine_resolution = True
         self.is_remove_ground = False
 
@@ -45,7 +45,7 @@ class Options:
 
         self.batch_size = 8
         self.gpu_ids = [2]
-        self.device = torch.device('cuda', self.gpu_ids[0])
+        self.device = torch.device('cpu')
         self.normalization = 'batch'
         self.norm_momentum = 0.1
         self.activation = 'relu'

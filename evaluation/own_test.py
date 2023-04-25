@@ -13,7 +13,7 @@ if __name__ == "__main__":
     # data_process =
 
     print("=> using '{}' for computation.".format(device))
-    root_path = '/mnt/7980b26c-ddab-46d2-88f1-19b99447d55b/oxford'
+    root_path = '/data/oxford'
     # -------------------- create model --------------------
     print("=> creating model and optimizer... ")
     if opt.is_fine_resolution:
@@ -35,10 +35,12 @@ if __name__ == "__main__":
     camera_poses_np_dict = {}
 
     pc_timestamps_np = np.load(os.path.join(root_path, traversal, 'pc_timestamps.npy'))
+    print("pc_timestamps")
     print(pc_timestamps_np.shape)
     print(pc_timestamps_np[:10])
     pc_timestamps_list_dict[traversal] = pc_timestamps_np.tolist()
     pc_poses_np = np.load(os.path.join(root_path, traversal, 'pc_poses.npy')).astype(np.float32)
+    print("pc_poses")
     print(pc_poses_np[:10])
     # convert it to camera coordinate
     P_convert = np.asarray([[0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 0, 1]], dtype=np.float32)
@@ -49,10 +51,12 @@ if __name__ == "__main__":
     pc_poses_np_dict[traversal] = pc_poses_np
 
     img_timestamps_np = np.load(os.path.join(root_path, traversal, 'camera_timestamps.npy'))
+    print("img_timestamps")
     print(img_timestamps_np.shape)
     print(img_timestamps_np[:10])
     camera_timestamps_list_dict[traversal] = img_timestamps_np.tolist()
     img_poses_np = np.load(os.path.join(root_path, traversal, 'camera_poses.npy')).astype(np.float32)
+    print("img_poses")
     print(img_poses_np[:10])
     # convert it to camera coordinate
     for b in range(img_poses_np.shape[0]):
