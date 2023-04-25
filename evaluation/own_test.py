@@ -2,6 +2,7 @@ import bisect
 import math
 import os
 import random
+import open3d
 
 import cv2
 import numpy as np
@@ -11,7 +12,22 @@ import torch
 from models.multimodal_classifier import MMClassifer, MMClassiferCoarse
 
 from data.kitti_helper import camera_matrix_scaling, camera_matrix_cropping, FarthestSampler
-from data.nuscenes_pc_img_pose_loader import downsample_with_reflectance
+
+
+def downsample_with_reflectance(pointcloud, reflectance, voxel_grid_downsample_size):
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(np.transpose(pointcloud[0:3, :]))
+    reflectance_max = np.max(reflectance)
+
+    fake_colors = np.zeros((pointcloud.shape[1], 3))
+    fake_colors[:, 0] = reflectance / reflectance_max
+    pcd.colors = open3d.utility.Vector3dVector(fake_colors)
+    down_pcd = pcd.voxel_down_sample(voxel_size=voxel_grid_downsample_size)
+    down_pcd_points = np.transpose(np.asarray(down_pcd.points))  # 3xN
+    pointcloud = down_pcd_points
+    reflectance = np.asarray(down_pcd.colors)[:, 0] * reflectance_max
+
+    return pointcloud, reflectance
 
 
 def get_camera_timestamp(pc_timestamp_idx,
