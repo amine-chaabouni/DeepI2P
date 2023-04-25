@@ -304,8 +304,8 @@ if __name__ == "__main__":
     fine_resolution_scale = 1 / 32.0
 
     b = 0
-    K = K.cpu().numpy()[b, ...]
-    P = P.cpu().numpy()[b, ...]
+    K = K.cpu().numpy()
+    P = P.cpu().numpy()
 
     pc_vis_np = pc_np[b, :, :]  # 3xN
     P_pc_vis_np = P_pc_np[b, :, :]  # 3xN
@@ -327,12 +327,12 @@ if __name__ == "__main__":
         axis=0)
 
     pc_np = point_data_np[0:3, :].astype(np.float64)
-    coarse_predictions_np = point_data_np[3, :].astype(np.int)
-    coarse_labels_np = point_data_np[4, :].astype(np.int)
-    fine_predictions_np = point_data_np[5, :].astype(np.int)
-    # fine_labels_np = point_data_np[6, :].astype(np.int)
+    coarse_predictions_np = point_data_np[3, :].astype(int)
+    coarse_labels_np = point_data_np[4, :].astype(int)
+    fine_predictions_np = point_data_np[5, :].astype(int)
+    # fine_labels_np = point_data_np[6, :].astype(int)
 
-    P_pred_np, final_cost = solve_PnP(pc_np, coarse_prediction_np, fine_prediction_np, K, H, W, fine_resolution_scale,
+    P_pred_np, final_cost = solve_PnP(pc_np, coarse_predictions_np, fine_predictions_np, K, H, W, fine_resolution_scale,
                                       iterationsCount=500, method=cv2.SOLVEPNP_EPNP)
 
     print("P_pred_np")

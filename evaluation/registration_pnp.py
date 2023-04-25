@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 import multiprocessing
 
 import matplotlib
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 
 from models.multimodal_classifier import MMClassifer
 from data.kitti_pc_img_pose_loader import KittiLoader
@@ -94,20 +94,25 @@ def get_P_diff(P_pred_np, P_gt_np):
 
 def solve_PnP(pc_np, coarse_predictions_np, fine_predictions_np, K_np, H, W, fine_resolution_scale,
               iterationsCount, method):
+    print(f"pc shape = {pc_np.shape}")
     in_image_mask = coarse_predictions_np == 1
+
+    print(f"coarce prediction shape = {coarse_predictions_np.shape}")
+    print(f"in_image_mask shape = {in_image_mask.shape}")
     pc_masked_np = pc_np[:, in_image_mask]
     fine_predictions_masked_np = fine_predictions_np[in_image_mask]
 
     # compensate the K_np
     H = H * fine_resolution_scale
     W = W * fine_resolution_scale
+    print(f"K shape = {K_np.shape}")
     K_np_fine = camera_matrix_scaling(K_np, fine_resolution_scale)
 
     # extract the pairs for PnP solver
-    points = pc_masked_np.astype(np.float)  # 3xN
+    points = pc_masked_np.astype(np.float64)  # 3xN
     pixels_y = np.floor(fine_predictions_masked_np / W)
     pixels_x = fine_predictions_masked_np - pixels_y * W
-    pixels = np.stack((pixels_x, pixels_y), axis=0).astype(np.float)  # 2xN
+    pixels = np.stack((pixels_x, pixels_y), axis=0).astype(np.float64)  # 2xN
 
     # debug
     # pc_np_homo = np.concatenate((pc_masked_np,
@@ -149,7 +154,7 @@ def solve_PnP(pc_np, coarse_predictions_np, fine_predictions_np, K_np, H, W, fin
 
 
 if __name__=='__main__':
-    root_path = '/ssd/jiaxin/point-img-feature/kitti/save/1.30-noTranslation'
+    root_path = '/data/oxford'
     # root_path = '/ssd/jiaxin/point-img-feature/oxford/save/1.15-fine-wGround-nocrop-0.25x192x320'
     # root_path = '/ssd/jiaxin/point-img-feature/nuscenes_t/save/3.3-160x320-accu'
     visualization_output_folder = 'visualization'
@@ -184,10 +189,10 @@ if __name__=='__main__':
 
         point_data_np = np.load(os.path.join(data_output_path, filename+'_pc_label.npy'))
         pc_np = point_data_np[0:3, :].astype(np.float64)
-        coarse_predictions_np = point_data_np[3, :].astype(np.int)
-        coarse_labels_np = point_data_np[4, :].astype(np.int)
-        fine_predictions_np = point_data_np[5, :].astype(np.int)
-        fine_labels_np = point_data_np[6, :].astype(np.int)
+        coarse_predictions_np = point_data_np[3, :].astype(int)
+        coarse_labels_np = point_data_np[4, :].astype(int)
+        fine_predictions_np = point_data_np[5, :].astype(int)
+        fine_labels_np = point_data_np[6, :].astype(int)
         K_np = np.load(os.path.join(data_output_path, filename + '_K.npy')).astype(np.float64)
         P_gt_np = np.load(os.path.join(data_output_path, filename + '_P.npy')).astype(np.float64)
         if P_gt_np.shape[0] == 3:
