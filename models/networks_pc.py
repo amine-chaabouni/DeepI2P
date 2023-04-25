@@ -86,7 +86,7 @@ class PCEncoder(nn.Module):
         first_pn_out = self.first_pointnet(pc_augmented)
 
         with torch.cuda.device(first_pn_out.get_device()):
-            first_gather_index = index_max.forward_cuda_shared_mem(first_pn_out.detach(), min_idx.int(),
+            first_gather_index = index_max.forward_cpu(first_pn_out.detach(), min_idx.int(),
                                                                    Ma).detach().long()
         first_pn_out_masked_max = first_pn_out.gather(dim=2,
                                                       index=first_gather_index) * mask_row_max_B1Ma_float  # BxCxMa
@@ -99,7 +99,7 @@ class PCEncoder(nn.Module):
         second_pn_out = self.second_pointnet(first_pn_out_fusion)
 
         with torch.cuda.device(second_pn_out.get_device()):
-            second_gather_index = index_max.forward_cuda_shared_mem(second_pn_out, min_idx.int(), Ma).detach().long()
+            second_gather_index = index_max.forward_cpu(second_pn_out, min_idx.int(), Ma).detach().long()
         node_a_features = second_pn_out.gather(dim=2,
                                                index=second_gather_index) * mask_row_max_B1Ma_float  # BxCaxMa
 

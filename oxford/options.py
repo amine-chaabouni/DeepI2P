@@ -43,7 +43,7 @@ class Options:
         self.P_Rz_amplitude = 0.0 * math.pi / 12.0
         self.dataloader_threads = 10
 
-        self.batch_size = 8
+        self.batch_size = 1 
         self.gpu_ids = [2]
         self.device = torch.device('cpu')
         self.normalization = 'batch'

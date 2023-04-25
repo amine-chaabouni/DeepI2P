@@ -4,6 +4,7 @@ import os
 import random
 import open3d
 
+from PIL import Image
 import cv2
 import numpy as np
 import oxford.options
@@ -80,6 +81,7 @@ def downsample_np(pc_np, intensity_np, k):
 if __name__ == "__main__":
     opt = oxford.options.Options()
     farthest_sampler = FarthestSampler(dim=3)
+    K = np.array([[964.828979, 0, 643.788025], [0, 964.828979, 484.407990], [0, 0, 1]], dtype=np.float32)
 
     device = torch.device("cpu")
     # data_process =
@@ -157,9 +159,11 @@ if __name__ == "__main__":
                                                           camera_poses_np)
 
     camera_folder = os.path.join(root_path, traversal, 'stereo', 'centre')
+    print(f"camera folder = {camera_folder}")
     camera_timestamp = camera_timestamps_list[camera_timestamp_idx]
-    img = np.array(open(os.path.join(camera_folder, "%d.jpg" % camera_timestamp)))
-
+    print(f"camera image = {os.path.join(camera_folder, '%d.jpg' % camera_timestamp)}")
+    img = np.array(Image.open(os.path.join(camera_folder, "%d.jpg" % camera_timestamp)))
+    print(img.shape)
     # ------------- load image, original size is 960x1280, bottom rows are car itself -------------
     tmp_img_H = img.shape[0]
     img = img[0:(tmp_img_H - opt.crop_original_bottom_rows), :, :]
@@ -232,21 +236,29 @@ if __name__ == "__main__":
                                            k=opt.node_b_num)
 
     # -------------- convert to torch tensor ---------------------
-    pc = torch.from_numpy(pc_np)  # 3xN
-    intensity = torch.from_numpy(intensity_np)  # 1xN
-    sn = torch.zeros(pc.size(), dtype=pc.dtype, device=pc.device)
-    node_a = torch.from_numpy(node_a_np)  # 3xMa
-    node_b = torch.from_numpy(node_b_np)  # 3xMb
+    pc = torch.from_numpy(pc_np).to(device)  # 3xN
+    intensity = torch.from_numpy(intensity_np).to(device)  # 1xN
+    sn = torch.zeros(pc.size(), dtype=pc.dtype, device=pc.device).to(device)
+    node_a = torch.from_numpy(node_a_np).to(device)  # 3xMa
+    node_b = torch.from_numpy(node_b_np).to(device)  # 3xMb
 
-    P = torch.from_numpy(P[0:3, :].astype(np.float32))  # 3x4
+    P = torch.from_numpy(P[0:3, :].astype(np.float32)).to(device)  # 3x4
 
-    img = torch.from_numpy(img.astype(np.float32)).permute(2, 0, 1).contiguous()  # 3xHxW
-    K = torch.from_numpy(K.astype(np.float32))  # 3x3
+    img = torch.from_numpy(img.astype(np.float32)).permute(2, 0, 1).contiguous().to(device)  # 3xHxW
+    K = torch.from_numpy(K.astype(np.float32)).to(device)  # 3x3
 
-    t_ij = torch.from_numpy(t_ij.astype(np.float32))  # 3
+    t_ij = torch.from_numpy(t_ij.astype(np.float32)).to(device)  # 3
 
     return_value = pc, intensity, sn, node_a, node_b, P, img, K, t_ij
-
+    
+    # ------------ add batch size -----------------
+    img = img.unsqueeze(0)
+    pc = pc.unsqueeze(0)
+    intensity = intensity.unsqueeze(0)
+    sn = sn.unsqueeze(0)
+    node_a = node_a.unsqueeze(0)
+    node_b = node_b.unsqueeze(0)
+    print(img.shape)
     B, H, W = img.size(0), img.size(2), img.size(3)
     N = pc.size(2)
     H_fine = int(round(H / opt.img_fine_resolution_scale))

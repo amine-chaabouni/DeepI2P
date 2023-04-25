@@ -82,6 +82,8 @@ if __name__ == "__main__":
         pc, intensity, sn, node_a, node_b, \
         P, img, K, t_ij = data
 
+        print(img.shape)
+
         B, H, W = img.size(0), img.size(2), img.size(3)
         N = pc.size(2)
         H_fine = int(round(H / opt.img_fine_resolution_scale))
